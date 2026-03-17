@@ -6,7 +6,7 @@ metadata:
   name: {{ include "drift-sentinel.fullname" . }}-default-rule
   namespace: {{ .Release.Namespace }}
   annotations:
-    drift-sentinel.devtron.io/rule: "true"
+    drift-sentinel.k8s.io/rule: "true"
 data:
   spec: |
     mode: enforce
@@ -42,7 +42,7 @@ metadata:
   name: {{ .name }}
   namespace: {{ default $.Release.Namespace .namespace }}
   annotations:
-    drift-sentinel.devtron.io/rule: "true"
+    drift-sentinel.k8s.io/rule: "true"
 data:
   spec: |
 {{ .spec | indent 4 }}

@@ -4,7 +4,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ include "drift-sentinel.fullname" . }}
 webhooks:
-  - name: drift-sentinel.devtron.io
+  - name: drift-sentinel.k8s.io
     admissionReviewVersions: ["v1"]
     sideEffects: None
     failurePolicy: {{ .Values.webhook.failurePolicy }}

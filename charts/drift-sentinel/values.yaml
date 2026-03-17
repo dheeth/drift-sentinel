@@ -5,7 +5,7 @@ fullnameOverride: ""
 
 image:
   repository: docker.io/dheeth/drift-sentinel
-  tag: 62a53cc3-d7958797-506-7444
+  tag: 839a7520-d7958797-506-7461
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -20,7 +20,7 @@ webhook:
   failurePolicy: Fail
   timeoutSeconds: 10
   namespaceSelector:
-    key: drift-sentinel.devtron.io/enabled
+    key: drift-sentinel.k8s.io/enabled
     operator: NotIn
     values:
       - "false"
