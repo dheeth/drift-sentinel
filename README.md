@@ -285,5 +285,3 @@ Admission decisions are logged as structured JSON, including:
 - `pkg/rules`: rule parsing, matching, watching, and namespace mode resolution
 - `charts/drift-sentinel`: Helm deployment
 - `deploy/examples`: example rule manifests
-
-Implementation sequencing and remaining backlog are tracked in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
