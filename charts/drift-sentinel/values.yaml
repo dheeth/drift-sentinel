@@ -4,8 +4,8 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: drift-sentinel
-  tag: latest
+  repository: docker.io/dheeth/drift-sentinel
+  tag: 62a53cc3-d7958797-506-7444
   pullPolicy: IfNotPresent
 
 serviceAccount:
