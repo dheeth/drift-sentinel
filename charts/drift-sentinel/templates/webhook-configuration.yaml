@@ -1,0 +1,26 @@
+{{- $certs := include "drift-sentinel.lookupAndGenerateCerts" . | fromYaml }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "drift-sentinel.fullname" . }}
+webhooks:
+  - name: drift-sentinel.devtron.io
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    clientConfig:
+      service:
+        name: {{ include "drift-sentinel.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate
+        port: {{ .Values.service.port }}
+      caBundle: {{ $certs.ca | b64enc | quote }}
+    namespaceSelector:
+      matchExpressions:
+        - key: {{ .Values.webhook.namespaceSelector.key }}
+          operator: {{ .Values.webhook.namespaceSelector.operator }}
+          values:
+{{ toYaml .Values.webhook.namespaceSelector.values | indent 12 }}
+    rules:
+{{ toYaml .Values.webhook.rules | indent 6 }}

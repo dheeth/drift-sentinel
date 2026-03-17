@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drift-sentinel-replica-guard
+  namespace: drift-sentinel
+  annotations:
+    drift-sentinel.devtron.io/rule: "true"
+data:
+  spec: |
+    mode: enforce
+    priority: 150
+    namespaces:
+      - "*"
+    selectors:
+      - apiGroup: "apps"
+        kind: "Deployment"
+    include:
+      - "spec.replicas"

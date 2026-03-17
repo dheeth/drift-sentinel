@@ -1,0 +1,13 @@
+{{- $certs := include "drift-sentinel.lookupAndGenerateCerts" . | fromYaml }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "drift-sentinel.fullname" . }}-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "drift-sentinel.labels" . | nindent 4 }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $certs.cert | b64enc }}
+  tls.key: {{ $certs.key | b64enc }}
+  ca.crt: {{ $certs.ca | b64enc }}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "drift-sentinel.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "drift-sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "drift-sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: https
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

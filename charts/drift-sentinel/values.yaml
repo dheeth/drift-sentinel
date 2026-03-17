@@ -1,0 +1,71 @@
+replicaCount: 2
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: drift-sentinel
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  port: 443
+  targetPort: 8443
+
+webhook:
+  failurePolicy: Fail
+  timeoutSeconds: 10
+  namespaceSelector:
+    key: drift-sentinel.devtron.io/enabled
+    operator: NotIn
+    values:
+      - "false"
+  rules:
+    - operations:
+        - "UPDATE"
+      apiGroups:
+        - "apps"
+      apiVersions:
+        - "v1"
+      resources:
+        - "deployments"
+        - "statefulsets"
+        - "daemonsets"
+    - operations:
+        - "UPDATE"
+      apiGroups:
+        - "argoproj.io"
+      apiVersions:
+        - "v1alpha1"
+      resources:
+        - "rollouts"
+
+tls:
+  certFile: /tls/tls.crt
+  keyFile: /tls/tls.key
+
+defaultRule:
+  enabled: true
+
+rules: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+podDisruptionBudget:
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+env: []

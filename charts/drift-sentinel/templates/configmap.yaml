@@ -1,0 +1,49 @@
+{{- if .Values.defaultRule.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "drift-sentinel.fullname" . }}-default-rule
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    drift-sentinel.devtron.io/rule: "true"
+data:
+  spec: |
+    mode: enforce
+    priority: 100
+    namespaces:
+      - "*"
+    selectors:
+      - apiGroup: "apps"
+        kind: "Deployment"
+      - apiGroup: "apps"
+        kind: "StatefulSet"
+      - apiGroup: "apps"
+        kind: "DaemonSet"
+      - apiGroup: "argoproj.io"
+        kind: "Rollout"
+    exclude:
+      - "status"
+      - "metadata.managedFields"
+      - "metadata.resourceVersion"
+      - "metadata.generation"
+      - "metadata.uid"
+      - "metadata.creationTimestamp"
+      - "metadata.selfLink"
+    mutable:
+      - "spec.template.spec.containers[*].image"
+      - "spec.template.spec.initContainers[*].image"
+{{- end }}
+{{- range .Values.rules }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .name }}
+  namespace: {{ default $.Release.Namespace .namespace }}
+  annotations:
+    drift-sentinel.devtron.io/rule: "true"
+data:
+  spec: |
+{{ .spec | indent 4 }}
+{{- end }}

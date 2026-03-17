@@ -1,0 +1,6 @@
+apiVersion: v2
+name: drift-sentinel
+description: Kubernetes admission controller that blocks unintended workload drift.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

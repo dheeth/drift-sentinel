@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drift-sentinel-production
+  namespace: drift-sentinel
+  annotations:
+    drift-sentinel.devtron.io/rule: "true"
+data:
+  spec: |
+    mode: enforce
+    priority: 200
+    namespaces:
+      - "prod-*"
+    selectors:
+      - apiGroup: "apps"
+        kind: "Deployment"
+      - apiGroup: "apps"
+        kind: "StatefulSet"
+    exclude:
+      - "status"
+      - "metadata.*"
+    mutable:
+      - "spec.template.spec.containers[*].image"
+      - "spec.template.spec.initContainers[*].image"
