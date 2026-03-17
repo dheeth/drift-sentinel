@@ -4,7 +4,7 @@ metadata:
   name: drift-sentinel-team-a
   namespace: drift-sentinel
   annotations:
-    drift-sentinel.devtron.io/rule: "true"
+    drift-sentinel.k8s.io/rule: "true"
 data:
   spec: |
     mode: warn

@@ -1,9 +1,9 @@
 package rules
 
 const (
-	RuleAnnotationKey       = "drift-sentinel.devtron.io/rule"
-	DefaultBypassAnnotation = "drift-sentinel.devtron.io/bypass"
-	NamespaceModeAnnotation = "drift-sentinel.devtron.io/mode"
+	RuleAnnotationKey       = "drift-sentinel.k8s.io/rule"
+	DefaultBypassAnnotation = "drift-sentinel.k8s.io/bypass"
+	NamespaceModeAnnotation = "drift-sentinel.k8s.io/mode"
 )
 
 type Mode string

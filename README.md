@@ -23,20 +23,20 @@ It compares the old and new object, strips Kubernetes-managed noise, applies rul
 
 ConfigMap rule discovery:
 
-- `drift-sentinel.devtron.io/rule: "true"`
+- `drift-sentinel.k8s.io/rule: "true"`
 
 Resource bypass:
 
-- default key: `drift-sentinel.devtron.io/bypass: "true"`
+- default key: `drift-sentinel.k8s.io/bypass: "true"`
 - this key is configurable per rule with the `bypass` field
 
 Namespace mode override:
 
-- `drift-sentinel.devtron.io/mode: "enforce|warn|dry-run|off"`
+- `drift-sentinel.k8s.io/mode: "enforce|warn|dry-run|off"`
 
 Namespace webhook opt-out label in the default chart:
 
-- `drift-sentinel.devtron.io/enabled=false`
+- `drift-sentinel.k8s.io/enabled=false`
 
 ## How A Decision Is Made
 
@@ -66,7 +66,7 @@ metadata:
   name: drift-sentinel-production
   namespace: drift-sentinel
   annotations:
-    drift-sentinel.devtron.io/rule: "true"
+    drift-sentinel.k8s.io/rule: "true"
 data:
   spec: |
     mode: enforce
@@ -85,7 +85,7 @@ data:
     mutable:
       - "spec.template.spec.containers[*].image"
       - "spec.template.spec.initContainers[*].image"
-    bypass: "drift-sentinel.devtron.io/bypass"
+    bypass: "drift-sentinel.k8s.io/bypass"
 ```
 
 Supported rule fields:
