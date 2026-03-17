@@ -173,8 +173,9 @@ Default chart behavior:
 
 Basic install:
 
-```powershell
-helm install drift-sentinel .\charts\drift-sentinel -n drift-sentinel --create-namespace
+```bash
+helm repo add drift-sentinel https://dheeth.github.io/drift-sentinel
+helm install drift-sentinel drift-sentinel/drift-sentinel -n drift-sentinel --create-namespace
 ```
 
 Install with embedded rules:
