@@ -1,10 +1,16 @@
 package admission
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"drift-sentinel/pkg/metrics"
 	"drift-sentinel/pkg/rules"
 )
 
@@ -116,6 +122,67 @@ func TestValidatorSupportsBypassAnnotation(t *testing.T) {
 	}
 }
 
+func TestValidatorAllowsStandaloneBypassRemoval(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Bypass: rules.DefaultBypassAnnotation,
+		},
+	})
+
+	decision := NewValidator(store, nil).Validate(context.Background(), newDeploymentRequest(t,
+		deploymentObject("v1", 2, map[string]string{
+			rules.DefaultBypassAnnotation: "true",
+		}),
+		deploymentObject("v1", 2, nil),
+	))
+	if !decision.Allowed {
+		t.Fatalf("expected standalone bypass removal to be allowed: %s", decision.Reason)
+	}
+	if decision.Reason != "bypass annotation removed" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestValidatorDeniesBypassRemovalWithOtherChanges(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Mutable: []string{"spec.template.spec.containers[*].image"},
+			Bypass:  rules.DefaultBypassAnnotation,
+		},
+	})
+
+	decision := NewValidator(store, nil).Validate(context.Background(), newDeploymentRequest(t,
+		deploymentObject("v1", 2, map[string]string{
+			rules.DefaultBypassAnnotation: "true",
+		}),
+		deploymentObject("v2", 2, nil),
+	))
+	if decision.Allowed {
+		t.Fatal("expected bypass removal with other changes to be denied")
+	}
+	if decision.Reason != "bypass annotation removal must be the only change in the request" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
 func TestValidatorAppliesNamespaceModeOverride(t *testing.T) {
 	store := rules.NewStore()
 	store.Replace([]rules.Rule{
@@ -142,6 +209,9 @@ func TestValidatorAppliesNamespaceModeOverride(t *testing.T) {
 	}
 	if decision.Mode != string(rules.ModeWarn) {
 		t.Fatalf("unexpected effective mode: %q", decision.Mode)
+	}
+	if len(decision.Warnings) != 1 {
+		t.Fatalf("expected one warning, got %#v", decision.Warnings)
 	}
 }
 
@@ -174,6 +244,59 @@ func TestValidatorIgnoresImplicitSystemFields(t *testing.T) {
 	}
 	if decision.Reason != "no changes detected" {
 		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestHandlerWritesAdmissionWarnings(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeWarn,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Bypass: rules.DefaultBypassAnnotation,
+		},
+	})
+
+	handler := NewHandler(
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		NewValidator(store, nil),
+		metrics.NewRegistry(),
+	)
+
+	admissionRequest := newDeploymentRequest(t, deploymentObject("v1", 2, nil), deploymentObject("v1", 3, nil))
+	reviewBytes, err := EncodeReview(AdmissionReview{
+		APIVersion: "admission.k8s.io/v1",
+		Kind:       "AdmissionReview",
+		Request:    &admissionRequest,
+	})
+	if err != nil {
+		t.Fatalf("encode review: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewReader(reviewBytes))
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: %d", recorder.Code)
+	}
+
+	responseReview, err := DecodeReview(recorder.Body.Bytes())
+	if err != nil {
+		t.Fatalf("decode response review: %v", err)
+	}
+	if responseReview.Response == nil {
+		t.Fatal("expected response")
+	}
+	if len(responseReview.Response.Warnings) != 1 {
+		t.Fatalf("expected one warning, got %#v", responseReview.Response.Warnings)
 	}
 }
 

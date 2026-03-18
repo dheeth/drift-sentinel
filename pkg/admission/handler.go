@@ -45,7 +45,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if review.Request == nil {
-		h.writeAdmissionResponse(w, NewResponse("", false, 400, "missing admission request"))
+		h.writeAdmissionResponse(w, NewResponse("", false, 400, "missing admission request", nil))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.writeAdmissionResponse(w, NewResponse(review.Request.UID, decision.Allowed, code, decision.Reason))
+	h.writeAdmissionResponse(w, NewResponse(review.Request.UID, decision.Allowed, code, decision.Reason, decision.Warnings))
 }
 
 func (h *Handler) writeAdmissionResponse(w http.ResponseWriter, review AdmissionReview) {

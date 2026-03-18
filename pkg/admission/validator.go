@@ -25,6 +25,7 @@ type Decision struct {
 	StatusCode   int32
 	Reason       string
 	Result       string
+	Warnings     []string
 	ChangedPaths []string
 	DeniedPaths  []string
 	RuleName     string
@@ -120,6 +121,34 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		}
 	}
 
+	if hasTrueAnnotation(oldObj, rule.Bypass) && !hasTrueAnnotation(newObj, rule.Bypass) {
+		diffWithoutBypass, bypassErr := diffWithoutBypassAnnotation(oldObj, newObj, *rule)
+		if bypassErr != nil {
+			return errorDecision(rule, 500, bypassErr.Error())
+		}
+		if diffWithoutBypass.Identical {
+			return Decision{
+				Allowed:      true,
+				Reason:       "bypass annotation removed",
+				Result:       "allowed",
+				ChangedPaths: diffResult.ChangedPaths,
+				RuleName:     rule.Name,
+				Mode:         string(mode),
+			}
+		}
+
+		return Decision{
+			Allowed:      false,
+			StatusCode:   403,
+			Reason:       "bypass annotation removal must be the only change in the request",
+			Result:       "denied",
+			ChangedPaths: diffResult.ChangedPaths,
+			DeniedPaths:  diffWithoutBypass.ChangedPaths,
+			RuleName:     rule.Name,
+			Mode:         string(mode),
+		}
+	}
+
 	mutablePatterns, err := diff.ParsePatterns(rule.Mutable)
 	if err != nil {
 		return errorDecision(rule, 500, fmt.Sprintf("parse mutable patterns: %v", err))
@@ -155,10 +184,12 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		decision.Allowed = true
 		decision.Reason = reason
 		decision.Result = "allowed"
+		decision.Warnings = []string{reason}
 	case rules.ModeDryRun:
 		decision.Allowed = true
 		decision.Reason = "would deny: " + reason
 		decision.Result = "allowed"
+		decision.Warnings = []string{decision.Reason}
 	case rules.ModeOff:
 		decision.Allowed = true
 		decision.Reason = reason
@@ -252,6 +283,42 @@ func hasTrueAnnotation(obj map[string]any, key string) bool {
 		return typed
 	default:
 		return false
+	}
+}
+
+func diffWithoutBypassAnnotation(oldObj, newObj map[string]any, rule rules.Rule) (diff.DiffResult, error) {
+	oldWithoutBypass := cloneObject(oldObj)
+	newWithoutBypass := cloneObject(newObj)
+
+	removeAnnotation(oldWithoutBypass, rule.Bypass)
+	removeAnnotation(newWithoutBypass, rule.Bypass)
+
+	scopedOld, scopedNew, err := prepareObjects(oldWithoutBypass, newWithoutBypass, rule)
+	if err != nil {
+		return diff.DiffResult{}, err
+	}
+
+	return diff.Compare(scopedOld, scopedNew), nil
+}
+
+func cloneObject(obj map[string]any) map[string]any {
+	return diff.Strip(obj, nil)
+}
+
+func removeAnnotation(obj map[string]any, key string) {
+	metadata, ok := obj["metadata"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	annotations, ok := metadata["annotations"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	delete(annotations, key)
+	if len(annotations) == 0 {
+		delete(metadata, "annotations")
 	}
 }
 

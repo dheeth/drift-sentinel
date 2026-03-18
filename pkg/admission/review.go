@@ -30,9 +30,10 @@ type AdmissionRequest struct {
 }
 
 type AdmissionResponse struct {
-	UID     string  `json:"uid"`
-	Allowed bool    `json:"allowed"`
-	Status  *Status `json:"status,omitempty"`
+	UID      string   `json:"uid"`
+	Allowed  bool     `json:"allowed"`
+	Status   *Status  `json:"status,omitempty"`
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type GroupVersionResource struct {
@@ -65,13 +66,14 @@ func DecodeReview(data []byte) (AdmissionReview, error) {
 	return review, nil
 }
 
-func NewResponse(uid string, allowed bool, code int32, message string) AdmissionReview {
+func NewResponse(uid string, allowed bool, code int32, message string, warnings []string) AdmissionReview {
 	review := AdmissionReview{
 		APIVersion: admissionAPIVersion,
 		Kind:       admissionKind,
 		Response: &AdmissionResponse{
-			UID:     uid,
-			Allowed: allowed,
+			UID:      uid,
+			Allowed:  allowed,
+			Warnings: append([]string(nil), warnings...),
 		},
 	}
 
