@@ -5,7 +5,7 @@ fullnameOverride: ""
 
 image:
   repository: docker.io/dheeth/drift-sentinel
-  tag: 839a7520-d7958797-506-7461
+  tag: v1.0.4
   pullPolicy: IfNotPresent
 
 serviceAccount:
