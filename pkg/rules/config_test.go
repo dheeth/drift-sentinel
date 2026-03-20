@@ -21,12 +21,17 @@ selectors:
     kind: "Deployment"
   - apiGroup: "apps"
     kind: "StatefulSet"
+labels:
+  - "app=api-service"
+  - "team"
 exclude:
   - "status"
   - "metadata.*"
 include: []
 mutable:
   - "spec.template.spec.containers[*].image"
+users:
+  - "system:serviceaccount:devtron:cd"
 `,
 		},
 	}
@@ -60,6 +65,12 @@ mutable:
 	if rule.Bypass != DefaultBypassAnnotation {
 		t.Fatalf("unexpected bypass annotation: %q", rule.Bypass)
 	}
+	if got := len(rule.Users); got != 1 {
+		t.Fatalf("unexpected users count: %d", got)
+	}
+	if got := len(rule.Labels); got != 2 {
+		t.Fatalf("unexpected labels count: %d", got)
+	}
 }
 
 func TestParseConfigMapInlineLists(t *testing.T) {
@@ -77,9 +88,11 @@ namespaces: ["team-a-*", "team-b"]
 selectors:
   - apiGroup: "apps"
     kind: "Deployment"
+labels: ["app=api-service"]
 exclude: ["status"]
 include: ["spec.replicas"]
 mutable: ["spec.template.spec.containers[*].image"]
+users: ["alice", "bob"]
 bypass: "custom.dev/bypass"
 `,
 		},
@@ -101,6 +114,12 @@ bypass: "custom.dev/bypass"
 	}
 	if got := len(rule.Include); got != 1 {
 		t.Fatalf("unexpected include count: %d", got)
+	}
+	if got := len(rule.Users); got != 2 {
+		t.Fatalf("unexpected users count: %d", got)
+	}
+	if got := len(rule.Labels); got != 1 {
+		t.Fatalf("unexpected labels count: %d", got)
 	}
 }
 

@@ -22,9 +22,11 @@ type Rule struct {
 	Mode       Mode
 	Namespaces []string
 	Selectors  []ResourceSelector
+	Labels     []string
 	Exclude    []string
 	Include    []string
 	Mutable    []string
+	Users      []string
 	Bypass     string
 }
 
@@ -44,4 +46,5 @@ type MatchInput struct {
 	Namespace string
 	APIGroup  string
 	Kind      string
+	Labels    map[string]string
 }

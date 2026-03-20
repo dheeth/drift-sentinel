@@ -10,6 +10,7 @@ func TestMatchPrefersHighestPriority(t *testing.T) {
 			Priority:   100,
 			Mode:       ModeEnforce,
 			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service"},
 			Selectors: []ResourceSelector{
 				{APIGroup: "apps", Kind: "Deployment"},
 			},
@@ -20,6 +21,7 @@ func TestMatchPrefersHighestPriority(t *testing.T) {
 			Priority:   200,
 			Mode:       ModeWarn,
 			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service"},
 			Selectors: []ResourceSelector{
 				{APIGroup: "apps", Kind: "Deployment"},
 			},
@@ -30,6 +32,7 @@ func TestMatchPrefersHighestPriority(t *testing.T) {
 		Namespace: "prod-core",
 		APIGroup:  "apps",
 		Kind:      "Deployment",
+		Labels:    map[string]string{"app": "api-service"},
 	})
 	if !ok {
 		t.Fatal("expected a matching rule")
@@ -47,6 +50,7 @@ func TestMatchUsesDeterministicTieBreaker(t *testing.T) {
 			Priority:   100,
 			Mode:       ModeEnforce,
 			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service"},
 			Selectors: []ResourceSelector{
 				{APIGroup: "apps", Kind: "Deployment"},
 			},
@@ -57,6 +61,7 @@ func TestMatchUsesDeterministicTieBreaker(t *testing.T) {
 			Priority:   100,
 			Mode:       ModeWarn,
 			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service"},
 			Selectors: []ResourceSelector{
 				{APIGroup: "apps", Kind: "Deployment"},
 			},
@@ -67,6 +72,7 @@ func TestMatchUsesDeterministicTieBreaker(t *testing.T) {
 		Namespace: "prod-core",
 		APIGroup:  "apps",
 		Kind:      "Deployment",
+		Labels:    map[string]string{"app": "api-service"},
 	})
 	if !ok {
 		t.Fatal("expected a matching rule")
@@ -85,6 +91,7 @@ func TestStoreSnapshotAndMatch(t *testing.T) {
 			Priority:   10,
 			Mode:       ModeEnforce,
 			Namespaces: []string{"staging"},
+			Labels:     []string{"app=api-service"},
 			Selectors: []ResourceSelector{
 				{APIGroup: "apps", Kind: "Deployment"},
 			},
@@ -102,11 +109,58 @@ func TestStoreSnapshotAndMatch(t *testing.T) {
 		Namespace: "staging",
 		APIGroup:  "apps",
 		Kind:      "Deployment",
+		Labels:    map[string]string{"app": "api-service"},
 	})
 	if !ok {
 		t.Fatal("expected a matching rule")
 	}
 	if rule.Name != "match-me" {
 		t.Fatalf("store snapshot leaked mutation: %q", rule.Name)
+	}
+}
+
+func TestMatchRequiresLabelSelectors(t *testing.T) {
+	rule, ok := Match([]Rule{
+		{
+			Name:       "labeled",
+			Namespace:  "drift-system",
+			Priority:   10,
+			Mode:       ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service", "team=platform"},
+			Selectors: []ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+		},
+	}, MatchInput{
+		Namespace: "prod-apps",
+		APIGroup:  "apps",
+		Kind:      "Deployment",
+		Labels:    map[string]string{"app": "api-service", "team": "platform"},
+	})
+	if !ok || rule.Name != "labeled" {
+		t.Fatal("expected labeled rule to match")
+	}
+
+	_, ok = Match([]Rule{
+		{
+			Name:       "labeled",
+			Namespace:  "drift-system",
+			Priority:   10,
+			Mode:       ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Labels:     []string{"app=api-service", "team=platform"},
+			Selectors: []ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+		},
+	}, MatchInput{
+		Namespace: "prod-apps",
+		APIGroup:  "apps",
+		Kind:      "Deployment",
+		Labels:    map[string]string{"app": "api-service", "team": "other"},
+	})
+	if ok {
+		t.Fatal("did not expect label mismatch to match")
 	}
 }

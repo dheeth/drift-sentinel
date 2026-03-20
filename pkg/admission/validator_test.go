@@ -122,6 +122,98 @@ func TestValidatorSupportsBypassAnnotation(t *testing.T) {
 	}
 }
 
+func TestValidatorAllowsWhenUserIsNotScoped(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Users: []string{"system:serviceaccount:devtron:cd"},
+		},
+	})
+
+	request := newDeploymentRequest(t, deploymentObject("v1", 2, nil), deploymentObject("v1", 3, nil))
+	request.UserInfo.Username = "system:serviceaccount:devtron:other"
+
+	decision := NewValidator(store, nil).Validate(context.Background(), request)
+	if !decision.Allowed {
+		t.Fatalf("expected unscoped user to be allowed: %s", decision.Reason)
+	}
+	if decision.Reason != "user not in scoped user list" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestValidatorMatchesRuleOnLabels(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Labels: []string{"app=api-service"},
+		},
+	})
+
+	decision := NewValidator(store, nil).Validate(context.Background(), newDeploymentRequest(t,
+		deploymentObjectWithLabels("v1", 2, nil, map[string]string{
+			"app": "api-service",
+		}),
+		deploymentObjectWithLabels("v1", 3, nil, map[string]string{
+			"app": "api-service",
+		}),
+	))
+	if decision.Allowed {
+		t.Fatal("expected matching labeled rule to enforce and deny immutable change")
+	}
+	if decision.Reason != "Drift Sentinel: immutable fields changed: spec.replicas" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestValidatorAllowsWhenRuleLabelsDoNotMatch(t *testing.T) {
+	store := rules.NewStore()
+	store.Replace([]rules.Rule{
+		{
+			Name:       "prod",
+			Namespace:  "drift-system",
+			Priority:   100,
+			Mode:       rules.ModeEnforce,
+			Namespaces: []string{"prod-*"},
+			Selectors: []rules.ResourceSelector{
+				{APIGroup: "apps", Kind: "Deployment"},
+			},
+			Labels: []string{"app=payments"},
+		},
+	})
+
+	decision := NewValidator(store, nil).Validate(context.Background(), newDeploymentRequest(t,
+		deploymentObjectWithLabels("v1", 2, nil, map[string]string{
+			"app": "api-service",
+		}),
+		deploymentObjectWithLabels("v1", 3, nil, map[string]string{
+			"app": "api-service",
+		}),
+	))
+	if !decision.Allowed {
+		t.Fatalf("expected non-matching labeled rule to be skipped: %s", decision.Reason)
+	}
+	if decision.Reason != "no matching rule" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
 func TestValidatorAllowsStandaloneBypassRemoval(t *testing.T) {
 	store := rules.NewStore()
 	store.Replace([]rules.Rule{
@@ -341,9 +433,21 @@ func newDeploymentRequest(t *testing.T, oldObj, newObj map[string]any) Admission
 }
 
 func deploymentObject(image string, replicas int, annotations map[string]string) map[string]any {
+	return deploymentObjectWithMetadata(image, replicas, annotations, nil)
+}
+
+func deploymentObjectWithLabels(image string, replicas int, annotations map[string]string, labels map[string]string) map[string]any {
+	return deploymentObjectWithMetadata(image, replicas, annotations, labels)
+}
+
+func deploymentObjectWithMetadata(image string, replicas int, annotations map[string]string, labels map[string]string) map[string]any {
 	rawAnnotations := make(map[string]any, len(annotations))
 	for key, value := range annotations {
 		rawAnnotations[key] = value
+	}
+	rawLabels := make(map[string]any, len(labels))
+	for key, value := range labels {
+		rawLabels[key] = value
 	}
 
 	return map[string]any{
@@ -353,6 +457,7 @@ func deploymentObject(image string, replicas int, annotations map[string]string)
 			"name":        "api-service",
 			"namespace":   "prod-apps",
 			"annotations": rawAnnotations,
+			"labels":      rawLabels,
 		},
 		"spec": map[string]any{
 			"replicas": replicas,

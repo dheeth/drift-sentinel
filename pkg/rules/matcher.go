@@ -1,6 +1,9 @@
 package rules
 
-import "path"
+import (
+	"path"
+	"strings"
+)
 
 func Match(rules []Rule, input MatchInput) (*Rule, bool) {
 	ordered := append([]Rule(nil), rules...)
@@ -11,6 +14,9 @@ func Match(rules []Rule, input MatchInput) (*Rule, bool) {
 			continue
 		}
 		if !matchesSelector(rule.Selectors, input.APIGroup, input.Kind) {
+			continue
+		}
+		if !matchesLabels(rule.Labels, input.Labels) {
 			continue
 		}
 
@@ -40,4 +46,28 @@ func matchesSelector(selectors []ResourceSelector, apiGroup, kind string) bool {
 	}
 
 	return false
+}
+
+func matchesLabels(selectors []string, labels map[string]string) bool {
+	if len(selectors) == 0 {
+		return true
+	}
+
+	for _, selector := range selectors {
+		key, value, hasValue := strings.Cut(selector, "=")
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return false
+		}
+
+		labelValue, ok := labels[key]
+		if !ok {
+			return false
+		}
+		if hasValue && labelValue != strings.TrimSpace(value) {
+			return false
+		}
+	}
+
+	return true
 }

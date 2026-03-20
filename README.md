@@ -78,6 +78,9 @@ data:
         kind: "Deployment"
       - apiGroup: "apps"
         kind: "StatefulSet"
+    labels:
+      - "app=api-service"
+      - "team"
     exclude:
       - "status"
       - "metadata.managedFields"
@@ -94,9 +97,11 @@ Supported rule fields:
 - `priority`: higher wins; ties are broken deterministically by ConfigMap namespace/name
 - `namespaces`: namespace glob patterns
 - `selectors`: API group and kind pairs
+- `labels`: optional resource label selectors; each entry is either `key=value` for exact match or `key` for label presence
 - `exclude`: paths removed from comparison
 - `include`: if set, only these paths are compared
 - `mutable`: changed paths allowed within the compared scope
+- `users`: optional exact usernames to which the rule applies; if set and the request user is not in the list, Drift Sentinel allows the request
 - `bypass`: resource annotation key that skips enforcement
 
 ## Supported Path Syntax

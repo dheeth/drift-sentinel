@@ -62,8 +62,10 @@ func cloneRule(rule Rule) Rule {
 	cloned := rule
 	cloned.Namespaces = slices.Clone(rule.Namespaces)
 	cloned.Selectors = slices.Clone(rule.Selectors)
+	cloned.Labels = slices.Clone(rule.Labels)
 	cloned.Exclude = slices.Clone(rule.Exclude)
 	cloned.Include = slices.Clone(rule.Include)
 	cloned.Mutable = slices.Clone(rule.Mutable)
+	cloned.Users = slices.Clone(rule.Users)
 	return cloned
 }

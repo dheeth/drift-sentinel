@@ -12,9 +12,11 @@ type rawRuleSpec struct {
 	Priority   int
 	Namespaces []string
 	Selectors  []ResourceSelector
+	Labels     []string
 	Exclude    []string
 	Include    []string
 	Mutable    []string
+	Users      []string
 	Bypass     string
 }
 
@@ -65,9 +67,11 @@ func ParseConfigMap(configMap ConfigMap) (Rule, error) {
 		Mode:       mode,
 		Namespaces: append([]string(nil), spec.Namespaces...),
 		Selectors:  append([]ResourceSelector(nil), spec.Selectors...),
+		Labels:     append([]string(nil), spec.Labels...),
 		Exclude:    append([]string(nil), spec.Exclude...),
 		Include:    append([]string(nil), spec.Include...),
 		Mutable:    append([]string(nil), spec.Mutable...),
+		Users:      append([]string(nil), spec.Users...),
 		Bypass:     bypass,
 	}, nil
 }
@@ -154,6 +158,12 @@ func assignInlineValue(parsed *rawRuleSpec, key, value string, lineNumber int) e
 			return fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		parsed.Exclude = items
+	case "labels":
+		items, err := parseInlineList(value)
+		if err != nil {
+			return fmt.Errorf("line %d: %w", lineNumber, err)
+		}
+		parsed.Labels = items
 	case "include":
 		items, err := parseInlineList(value)
 		if err != nil {
@@ -166,6 +176,12 @@ func assignInlineValue(parsed *rawRuleSpec, key, value string, lineNumber int) e
 			return fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		parsed.Mutable = items
+	case "users":
+		items, err := parseInlineList(value)
+		if err != nil {
+			return fmt.Errorf("line %d: %w", lineNumber, err)
+		}
+		parsed.Users = items
 	default:
 		return fmt.Errorf("line %d: unsupported key %q", lineNumber, key)
 	}
@@ -187,6 +203,12 @@ func assignBlockValue(parsed *rawRuleSpec, key string, block []string, lineNumbe
 			return fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		parsed.Exclude = items
+	case "labels":
+		items, err := parseStringList(block)
+		if err != nil {
+			return fmt.Errorf("line %d: %w", lineNumber, err)
+		}
+		parsed.Labels = items
 	case "include":
 		items, err := parseStringList(block)
 		if err != nil {
@@ -199,6 +221,12 @@ func assignBlockValue(parsed *rawRuleSpec, key string, block []string, lineNumbe
 			return fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 		parsed.Mutable = items
+	case "users":
+		items, err := parseStringList(block)
+		if err != nil {
+			return fmt.Errorf("line %d: %w", lineNumber, err)
+		}
+		parsed.Users = items
 	case "selectors":
 		items, err := parseSelectorList(block)
 		if err != nil {

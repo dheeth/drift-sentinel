@@ -61,10 +61,20 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		}
 	}
 
+	oldObj, err := decodeObject(req.OldObject)
+	if err != nil {
+		return errorDecision(nil, 400, fmt.Sprintf("invalid oldObject: %v", err))
+	}
+	newObj, err := decodeObject(req.Object)
+	if err != nil {
+		return errorDecision(nil, 400, fmt.Sprintf("invalid object: %v", err))
+	}
+
 	rule, ok := v.store.Match(rules.MatchInput{
 		Namespace: req.Namespace,
 		APIGroup:  req.Resource.Group,
 		Kind:      req.Kind.Kind,
+		Labels:    extractLabels(newObj),
 	})
 	if !ok {
 		return Decision{
@@ -75,19 +85,20 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		}
 	}
 
-	oldObj, err := decodeObject(req.OldObject)
-	if err != nil {
-		return errorDecision(rule, 400, fmt.Sprintf("invalid oldObject: %v", err))
-	}
-	newObj, err := decodeObject(req.Object)
-	if err != nil {
-		return errorDecision(rule, 400, fmt.Sprintf("invalid object: %v", err))
+	if len(rule.Users) > 0 && !containsString(rule.Users, req.UserInfo.Username) {
+		return Decision{
+			Allowed:  true,
+			Reason:   "user not in scoped user list",
+			Result:   "allowed",
+			RuleName: rule.Name,
+			Mode:     string(rule.Mode),
+		}
 	}
 
 	if hasTrueAnnotation(newObj, rule.Bypass) {
 		return Decision{
 			Allowed:  true,
-			Reason:   "bypass annotation present",
+			Reason:   "bypass marker present",
 			Result:   "allowed",
 			RuleName: rule.Name,
 			Mode:     string(rule.Mode),
@@ -129,7 +140,7 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		if diffWithoutBypass.Identical {
 			return Decision{
 				Allowed:      true,
-				Reason:       "bypass annotation removed",
+				Reason:       "bypass marker removed",
 				Result:       "allowed",
 				ChangedPaths: diffResult.ChangedPaths,
 				RuleName:     rule.Name,
@@ -319,6 +330,37 @@ func removeAnnotation(obj map[string]any, key string) {
 	if len(annotations) == 0 {
 		delete(metadata, "annotations")
 	}
+}
+
+func extractLabels(obj map[string]any) map[string]string {
+	result := map[string]string{}
+	metadata, ok := obj["metadata"].(map[string]any)
+	if !ok {
+		return result
+	}
+
+	labels, ok := metadata["labels"].(map[string]any)
+	if !ok {
+		return result
+	}
+
+	for key, value := range labels {
+		if text, ok := value.(string); ok {
+			result[key] = text
+		}
+	}
+
+	return result
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+
+	return false
 }
 
 func errorDecision(rule *rules.Rule, code int32, reason string) Decision {
