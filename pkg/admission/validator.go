@@ -189,7 +189,6 @@ func (v *Validator) Validate(ctx context.Context, req AdmissionRequest) Decision
 		decision.Allowed = true
 		decision.Reason = "would deny: " + reason
 		decision.Result = "allowed"
-		decision.Warnings = []string{decision.Reason}
 	case rules.ModeOff:
 		decision.Allowed = true
 		decision.Reason = reason
