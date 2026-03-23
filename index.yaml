@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   drift-sentinel:
   - apiVersion: v2
+    appVersion: 1.0.10
+    created: "2026-03-23T07:11:39.611015837Z"
+    description: Kubernetes admission controller that blocks unintended workload drift.
+    digest: 36a14bbd48474b5ae7fb3525f78d2d44b27a8ba66be41d670547433cad54fd9b
+    name: drift-sentinel
+    type: application
+    urls:
+    - https://github.com/dheeth/drift-sentinel/releases/download/drift-sentinel-1.0.3/drift-sentinel-1.0.3.tgz
+    version: 1.0.3
+  - apiVersion: v2
     appVersion: 1.0.4
     created: "2026-03-18T09:02:04.963965525Z"
     description: Kubernetes admission controller that blocks unintended workload drift.
@@ -31,4 +41,4 @@ entries:
     urls:
     - https://github.com/dheeth/drift-sentinel/releases/download/drift-sentinel-1.0.0/drift-sentinel-1.0.0.tgz
     version: 1.0.0
-generated: "2026-03-18T09:02:04.963977343Z"
+generated: "2026-03-23T07:11:39.611029131Z"
