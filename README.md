@@ -81,6 +81,9 @@ data:
     labels:
       - "app=api-service"
       - "team"
+    users:
+      - "system:admin"
+      - "system:serviceaccount:team-a:release-bot"
     exclude:
       - "status"
       - "metadata.managedFields"
