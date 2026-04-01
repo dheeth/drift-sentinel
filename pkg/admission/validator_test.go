@@ -117,7 +117,7 @@ func TestValidatorSupportsBypassAnnotation(t *testing.T) {
 	if !decision.Allowed {
 		t.Fatalf("expected bypassed request to be allowed: %s", decision.Reason)
 	}
-	if decision.Reason != "bypass annotation present" {
+	if decision.Reason != "bypass marker present" {
 		t.Fatalf("unexpected reason: %q", decision.Reason)
 	}
 }
@@ -239,7 +239,7 @@ func TestValidatorAllowsStandaloneBypassRemoval(t *testing.T) {
 	if !decision.Allowed {
 		t.Fatalf("expected standalone bypass removal to be allowed: %s", decision.Reason)
 	}
-	if decision.Reason != "bypass annotation removed" {
+	if decision.Reason != "bypass marker removed" {
 		t.Fatalf("unexpected reason: %q", decision.Reason)
 	}
 }

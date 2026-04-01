@@ -60,8 +60,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.logger.Info(
-		"admission decision",
+	logArgs := []any{
 		"uid", review.Request.UID,
 		"operation", review.Request.Operation,
 		"namespace", review.Request.Namespace,
@@ -74,7 +73,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"reason", decision.Reason,
 		"changed_fields", decision.ChangedPaths,
 		"latency_ms", duration.Milliseconds(),
-	)
+	}
+	switch {
+	case !decision.Allowed:
+		h.logger.Error("admission decision", logArgs...)
+	case len(decision.Warnings) > 0:
+		h.logger.Warn("admission decision", logArgs...)
+	default:
+		h.logger.Info("admission decision", logArgs...)
+	}
 
 	code := int32(0)
 	if !decision.Allowed {
@@ -84,7 +91,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.writeAdmissionResponse(w, NewResponse(review.Request.UID, decision.Allowed, code, decision.Reason, decision.Warnings))
+	responseMessage := ""
+	if !decision.Allowed {
+		responseMessage = decision.Reason
+	}
+
+	h.writeAdmissionResponse(w, NewResponse(review.Request.UID, decision.Allowed, code, responseMessage, decision.Warnings))
 }
 
 func (h *Handler) writeAdmissionResponse(w http.ResponseWriter, review AdmissionReview) {

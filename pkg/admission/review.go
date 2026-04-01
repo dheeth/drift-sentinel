@@ -53,6 +53,8 @@ type UserInfo struct {
 }
 
 type Status struct {
+	Status  string `json:"status,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 	Code    int32  `json:"code"`
 	Message string `json:"message"`
 }
@@ -79,6 +81,8 @@ func NewResponse(uid string, allowed bool, code int32, message string, warnings 
 
 	if message != "" || code != 0 {
 		review.Response.Status = &Status{
+			Status:  statusState(allowed, code),
+			Reason:  statusReason(code),
 			Code:    code,
 			Message: message,
 		}
@@ -101,4 +105,27 @@ func EncodeReview(review AdmissionReview) ([]byte, error) {
 	}
 
 	return payload, nil
+}
+
+func statusState(allowed bool, code int32) string {
+	if allowed && code == 0 {
+		return ""
+	}
+	if allowed {
+		return "Success"
+	}
+	return "Failure"
+}
+
+func statusReason(code int32) string {
+	switch code {
+	case 400:
+		return "BadRequest"
+	case 403:
+		return "Forbidden"
+	case 500:
+		return "InternalError"
+	default:
+		return ""
+	}
 }
