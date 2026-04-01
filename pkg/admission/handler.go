@@ -24,7 +24,7 @@ func NewHandler(logger *slog.Logger, validator *Validator, registry *metrics.Reg
 
 	return &Handler{
 		logger:         logger,
-		decisionLogger: newDecisionLogger(os.Stdout),
+		decisionLogger: newDecisionLogger(os.Stderr),
 		validator:      validator,
 		metrics:        registry,
 	}

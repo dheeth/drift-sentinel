@@ -3,13 +3,14 @@ package admission
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"sync"
 	"time"
 )
 
 type decisionLogger struct {
 	mu  sync.Mutex
-	out io.Writer
+	log *log.Logger
 }
 
 type decisionLogEntry struct {
@@ -35,7 +36,9 @@ func newDecisionLogger(out io.Writer) *decisionLogger {
 		out = io.Discard
 	}
 
-	return &decisionLogger{out: out}
+	return &decisionLogger{
+		log: log.New(out, "", 0),
+	}
 }
 
 func (l *decisionLogger) Log(request AdmissionRequest, resource string, decision Decision, duration time.Duration) error {
@@ -65,13 +68,7 @@ func (l *decisionLogger) Log(request AdmissionRequest, resource string, decision
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if _, err := l.out.Write(payload); err != nil {
-		return err
-	}
-	if _, err := l.out.Write([]byte("\n")); err != nil {
-		return err
-	}
-
+	l.log.Print(string(payload))
 	return nil
 }
 
