@@ -4,15 +4,17 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"drift-sentinel/pkg/metrics"
 )
 
 type Handler struct {
-	logger    *slog.Logger
-	validator *Validator
-	metrics   *metrics.Registry
+	logger         *slog.Logger
+	decisionLogger *decisionLogger
+	validator      *Validator
+	metrics        *metrics.Registry
 }
 
 func NewHandler(logger *slog.Logger, validator *Validator, registry *metrics.Registry) *Handler {
@@ -21,9 +23,10 @@ func NewHandler(logger *slog.Logger, validator *Validator, registry *metrics.Reg
 	}
 
 	return &Handler{
-		logger:    logger,
-		validator: validator,
-		metrics:   registry,
+		logger:         logger,
+		decisionLogger: newDecisionLogger(os.Stdout),
+		validator:      validator,
+		metrics:        registry,
 	}
 }
 
@@ -64,27 +67,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logAttrs := []slog.Attr{
-		slog.String("uid", review.Request.UID),
-		slog.String("operation", review.Request.Operation),
-		slog.String("namespace", review.Request.Namespace),
-		slog.String("resource", resource),
-		slog.String("name", review.Request.Name),
-		slog.String("user", review.Request.UserInfo.Username),
-		slog.String("rule", decision.RuleName),
-		slog.String("mode", decision.Mode),
-		slog.String("result", decision.Result),
-		slog.String("reason", decision.Reason),
-		slog.Any("changed_fields", decision.ChangedPaths),
-		slog.Int64("latency_ms", duration.Milliseconds()),
-	}
-	switch {
-	case !decision.Allowed:
-		h.logger.LogAttrs(r.Context(), slog.LevelError, "admission decision", logAttrs...)
-	case len(decision.Warnings) > 0:
-		h.logger.LogAttrs(r.Context(), slog.LevelWarn, "admission decision", logAttrs...)
-	default:
-		h.logger.LogAttrs(r.Context(), slog.LevelInfo, "admission decision", logAttrs...)
+	if err := h.decisionLogger.Log(*review.Request, resource, decision, duration); err != nil {
+		h.logger.Error("failed to write admission decision log", "uid", review.Request.UID, "error", err)
 	}
 
 	code := int32(0)
