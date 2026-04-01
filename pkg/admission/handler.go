@@ -1,6 +1,7 @@
 package admission
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -74,14 +75,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"changed_fields", decision.ChangedPaths,
 		"latency_ms", duration.Milliseconds(),
 	}
+	fmt.Println("Just Before Switch: ", logArgs)
 	switch {
 	case !decision.Allowed:
+		fmt.Println("Error After Switch: ", logArgs)
 		h.logger.Error("admission decision", logArgs...)
 	case len(decision.Warnings) > 0:
+		fmt.Println("Warn After Switch: ", logArgs)
 		h.logger.Warn("admission decision", logArgs...)
 	default:
+		fmt.Println("Info After Switch: ", logArgs)
 		h.logger.Info("admission decision", logArgs...)
 	}
+	fmt.Println("After Switch: ", logArgs)
 
 	code := int32(0)
 	if !decision.Allowed {
