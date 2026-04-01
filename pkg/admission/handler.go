@@ -1,7 +1,6 @@
 package admission
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,6 +16,10 @@ type Handler struct {
 }
 
 func NewHandler(logger *slog.Logger, validator *Validator, registry *metrics.Registry) *Handler {
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	return &Handler{
 		logger:    logger,
 		validator: validator,
@@ -61,33 +64,28 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logArgs := []any{
-		"uid", review.Request.UID,
-		"operation", review.Request.Operation,
-		"namespace", review.Request.Namespace,
-		"resource", resource,
-		"name", review.Request.Name,
-		"user", review.Request.UserInfo.Username,
-		"rule", decision.RuleName,
-		"mode", decision.Mode,
-		"result", decision.Result,
-		"reason", decision.Reason,
-		"changed_fields", decision.ChangedPaths,
-		"latency_ms", duration.Milliseconds(),
+	logAttrs := []slog.Attr{
+		slog.String("uid", review.Request.UID),
+		slog.String("operation", review.Request.Operation),
+		slog.String("namespace", review.Request.Namespace),
+		slog.String("resource", resource),
+		slog.String("name", review.Request.Name),
+		slog.String("user", review.Request.UserInfo.Username),
+		slog.String("rule", decision.RuleName),
+		slog.String("mode", decision.Mode),
+		slog.String("result", decision.Result),
+		slog.String("reason", decision.Reason),
+		slog.Any("changed_fields", decision.ChangedPaths),
+		slog.Int64("latency_ms", duration.Milliseconds()),
 	}
-	fmt.Println("Just Before Switch: ", logArgs)
 	switch {
 	case !decision.Allowed:
-		fmt.Println("Error After Switch: ", logArgs)
-		h.logger.Error("admission decision", logArgs...)
+		h.logger.LogAttrs(r.Context(), slog.LevelError, "admission decision", logAttrs...)
 	case len(decision.Warnings) > 0:
-		fmt.Println("Warn After Switch: ", logArgs)
-		h.logger.Warn("admission decision", logArgs...)
+		h.logger.LogAttrs(r.Context(), slog.LevelWarn, "admission decision", logAttrs...)
 	default:
-		fmt.Println("Info After Switch: ", logArgs)
-		h.logger.Info("admission decision", logArgs...)
+		h.logger.LogAttrs(r.Context(), slog.LevelInfo, "admission decision", logAttrs...)
 	}
-	fmt.Println("After Switch: ", logArgs)
 
 	code := int32(0)
 	if !decision.Allowed {
